@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Xsl;
 
@@ -31,6 +33,7 @@ namespace TrxerConsole
             }
             Console.WriteLine("Trx File\n{0}", args[0]);
             Transform(args[0], PrepareXsl());
+
         }
 
         /// <summary>
@@ -42,8 +45,16 @@ namespace TrxerConsole
         {
             XslCompiledTransform x = new XslCompiledTransform(true);
             x.Load(xsl, new XsltSettings(true, true), null);
+            
+            var javascriptFile = GetJavaScriptFile(xsl);
             Console.WriteLine("Transforming...");
-            x.Transform(fileName, fileName + OUTPUT_FILE_EXT);
+            var args = new XsltArgumentList();
+            args.AddExtensionObject("urn:my-scripts", new TrxPreProcessor());
+            var reportFileSb = new StringBuilder();
+            using var writer = new StringWriter(reportFileSb);
+            x.Transform(fileName, args, writer);
+            var reportFile = MergeJavaScript(reportFileSb, javascriptFile);
+            File.WriteAllText(fileName + OUTPUT_FILE_EXT, reportFile);
             Console.WriteLine("Done transforming xml into html");
         }
 
@@ -57,22 +68,26 @@ namespace TrxerConsole
             Console.WriteLine("Loading xslt template...");
             xslDoc.Load(ResourceReader.StreamFromResource(XSLT_FILE));
             MergeCss(xslDoc);
-            MergeJavaScript(xslDoc);
             return xslDoc;
         }
 
-        /// <summary>
-        /// Merges all javascript linked to page into Trxer html report itself
-        /// </summary>
-        /// <param name="xslDoc">Xsl document</param>
-        private static void MergeJavaScript(XmlDocument xslDoc)
+        private static string GetJavaScriptFile(XmlDocument xslDoc)
         {
             Console.WriteLine("Loading javascript...");
             XmlNode scriptEl = xslDoc.GetElementsByTagName("script")[0];
             XmlAttribute scriptSrc = scriptEl.Attributes["src"];
-            string script = ResourceReader.LoadTextFromResource(scriptSrc.Value);
-            scriptEl.Attributes.Remove(scriptSrc);
-            scriptEl.InnerText = script;
+            return scriptSrc.Value;
+        }
+
+        private static string MergeJavaScript(StringBuilder htmlReport, string javaScript)
+        {
+            Console.WriteLine("Loading javascript...");
+            string script = ResourceReader.LoadTextFromResource(javaScript);
+            string fileContents = htmlReport.ToString();
+            string pattern = @"<script[^>]*src=""functions\.js""[^>]*>[\s\S]*?</script>";
+            string replacement = $"<script type=\"text/javascript\">\n{script}\n</script>";
+            string finalReport = Regex.Replace(fileContents, pattern, replacement, RegexOptions.IgnoreCase);
+            return finalReport;
         }
 
         /// <summary>

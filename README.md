@@ -2,7 +2,7 @@
 ![11910876](https://cloud.githubusercontent.com/assets/11910876/7189304/c483f1b0-e486-11e4-9a95-44a1243fea5d.png)
 <h3>Transforms trx file into html</h3><br/>
 Trxer is a new way to view Trx Reports,all you need is a browser<br/>
-Trxer website: http://wingsrom.ro/trxer/<br/>
+This fork is an upgrade of the original project to .net 8.0 <br/>
 
 <b>Navigate Easily</b><br/>
 Trxer so friendly UI will make your life easier,much easier.You can navigate through test classed,<br/>
